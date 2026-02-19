@@ -74,6 +74,7 @@
 // }
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -81,11 +82,13 @@ import 'package:permission_handler/permission_handler.dart';
 class ExpertAudioCall extends StatefulWidget {
   final String channel;
   final String token;
+  final String callId;
 
   const ExpertAudioCall({
     super.key,
     required this.channel,
     required this.token,
+    required this.callId,
   });
 
   @override
@@ -102,6 +105,9 @@ class _ExpertAudioCallState extends State<ExpertAudioCall> {
   Timer? _timer;
   int _seconds = 0;
 
+  bool _callEnded = false; // 🔥 CRITICAL GUARD
+  StreamSubscription<DocumentSnapshot>? _callSub;
+
   // ─────────────────────────────────────────────
   // INIT
   // ─────────────────────────────────────────────
@@ -109,6 +115,25 @@ class _ExpertAudioCallState extends State<ExpertAudioCall> {
   void initState() {
     super.initState();
     _initAgora();
+    _listenCallEnd();
+  }
+
+  // ─────────────────────────────────────────────
+  // FIREBASE LISTENER
+  // ─────────────────────────────────────────────
+  void _listenCallEnd() {
+    _callSub = FirebaseFirestore.instance
+        .collection('call_requests')
+        .doc(widget.callId)
+        .snapshots()
+        .listen((doc) {
+      if (!doc.exists || _callEnded) return;
+
+      final status = doc['status'];
+      if (status == 'rejected' || status == 'ended') {
+        _endCall();
+      }
+    });
   }
 
   // ─────────────────────────────────────────────
@@ -139,7 +164,11 @@ class _ExpertAudioCallState extends State<ExpertAudioCall> {
     );
 
     await _engine!.enableAudio();
-    await _engine!.setEnableSpeakerphone(true);
+    try {
+      await _engine!.setEnableSpeakerphone(true);
+    } catch (e) {
+      print("⚠️ Speakerphone error: $e");
+    }
 
     await _engine!.joinChannel(
       token: widget.token,
@@ -186,7 +215,11 @@ class _ExpertAudioCallState extends State<ExpertAudioCall> {
   // END CALL
   // ─────────────────────────────────────────────
   Future<void> _endCall() async {
+    if (_callEnded) return;
+    _callEnded = true;
+
     _timer?.cancel();
+    _callSub?.cancel();
     await _engine?.leaveChannel();
     await _engine?.release();
     if (mounted) Navigator.pop(context);
@@ -195,6 +228,7 @@ class _ExpertAudioCallState extends State<ExpertAudioCall> {
   @override
   void dispose() {
     _timer?.cancel();
+    _callSub?.cancel();
     _engine?.release();
     super.dispose();
   }

@@ -174,6 +174,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
             : ExpertAudioCall(
           channel: widget.data['channel'],
           token: widget.data['token'],
+          callId: widget.callId,
+
         ),
       ),
     );

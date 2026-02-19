@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -187,7 +189,7 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
             stream: FirebaseFirestore.instance
                 .collection('call_requests')
                 .where('expertId', isEqualTo: expertId)
-                .where('status', whereIn: ['ringing'])
+                .where('status', whereIn: ['created','ringing'])
                 .limit(1)
                 .snapshots(),
             builder: (context, callSnap) {
@@ -200,6 +202,7 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
               final doc = callSnap.data!.docs.first;
               final data = doc.data() as Map<String, dynamic>;
 
+              log('kbfgdjksghfsw4785 ${data['type']}');
               /// 📞 CALL → FULL SCREEN
               if (data['type'] == 'audio' || data['type'] == 'video') {
                 return IncomingCallScreen(
