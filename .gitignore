@@ -41,3 +41,15 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Android build artifacts
+android/app/build/
+android/app/.cxx/
+android/.gradle/
+
+# APK / AAB
+*.apk
+*.aab
+
+# Zip
+*.zip
