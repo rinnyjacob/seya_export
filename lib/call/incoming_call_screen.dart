@@ -124,6 +124,9 @@
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../theme/app_colors.dart';
+import '../widgets/glass_card.dart';
+import '../widgets/user_birth_details_widget.dart';
 import 'expert_audio_call.dart';
 import 'expert_video_call.dart';
 
@@ -141,12 +144,26 @@ class IncomingCallScreen extends StatefulWidget {
   State<IncomingCallScreen> createState() => _IncomingCallScreenState();
 }
 
-class _IncomingCallScreenState extends State<IncomingCallScreen> {
+class _IncomingCallScreenState extends State<IncomingCallScreen>
+    with TickerProviderStateMixin {
   bool _navigated = false;
+  late AnimationController _pulseController;
+  late AnimationController _slideController;
 
   @override
   void initState() {
     super.initState();
+
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat();
+
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    )..forward();
+
     FirebaseFirestore.instance
         .collection('call_requests')
         .doc(widget.callId)
@@ -167,22 +184,25 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       MaterialPageRoute(
         builder: (_) => widget.data['type'] == 'video'
             ? ExpertVideoCall(
-          channel: widget.data['channel'],
-          token: widget.data['token'],
-          callId: widget.callId,
-        )
+                channel: widget.data['channel'],
+                token: widget.data['token'],
+                callId: widget.callId,
+                userId: widget.data['userId'] ?? '',
+              )
             : ExpertAudioCall(
-          channel: widget.data['channel'],
-          token: widget.data['token'],
-          callId: widget.callId,
-
-        ),
+                channel: widget.data['channel'],
+                token: widget.data['token'],
+                callId: widget.callId,
+                userId: widget.data['userId'] ?? '',
+              ),
       ),
     );
   }
 
   @override
   void dispose() {
+    _pulseController.dispose();
+    _slideController.dispose();
     log("❌ IncomingCallScreen DISPOSED | callId=${widget.callId}");
     super.dispose();
   }
@@ -190,96 +210,384 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   @override
   Widget build(BuildContext context) {
     final isVideo = widget.data['type'] == 'video';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = isDark ? AppColors.darkPrimary : AppColors.lightPrimary;
+    final userName = widget.data['userName'] ?? 'User';
+    final callType = isVideo ? 'Video Call' : 'Audio Call';
 
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              isVideo ? "Incoming Video Call" : "Incoming Audio Call",
-              style: const TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-            const SizedBox(height: 40),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [
+                    const Color(0xFF0F172A),
+                    const Color(0xFF1E293B),
+                    const Color(0xFF0F172A),
+                  ]
+                : [
+                    primaryColor.withValues(alpha: 0.9),
+                    primaryColor.withValues(alpha: 0.6),
+                    Colors.white,
+                  ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              const Spacer(),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                /// ❌ REJECT
-                FloatingActionButton(
-                  backgroundColor: Colors.red,
-                  child: const Icon(Icons.call_end),
-                  onPressed: () async {
-                    log("❌ REJECT pressed");
-
-                    await FirebaseFirestore.instance
-                        .collection('call_requests')
-                        .doc(widget.callId)
-                        .update({
-                      'status': 'rejected',
-                      'endedAt': FieldValue.serverTimestamp(),
-                      'endedBy': 'expert',
-                    });
-
-                    log("❌ Call rejected");
-                  },
+              // Status Header
+              SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, -0.5),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(parent: _slideController, curve: Curves.easeOut),
                 ),
+                child: Column(
+                  children: [
+                    Text(
+                      'Incoming Call',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: Colors.white.withValues(alpha: 0.7),
+                            letterSpacing: 1.5,
+                          ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      callType,
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
 
-                /// ✅ ACCEPT
-                FloatingActionButton(
-                  backgroundColor: Colors.green,
-                  child: const Icon(Icons.call),
-                  onPressed: _navigated
-                      ? null
-                      : () async {
-                    log("✅ ACCEPT pressed");
+              const SizedBox(height: 40),
 
-                    // _navigated = true;
+              // Caller Avatar & Info
+              ScaleTransition(
+                scale: Tween<double>(begin: 0.8, end: 1.0).animate(
+                  CurvedAnimation(parent: _slideController, curve: Curves.elasticOut),
+                ),
+                child: Column(
+                  children: [
+                    // Pulsing Avatar
+                    ScaleTransition(
+                      scale: Tween<double>(begin: 1.0, end: 1.1)
+                          .animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut)),
+                      child: Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: isDark
+                                ? AppColors.darkGradient
+                                : AppColors.lightGradient,
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: primaryColor.withValues(alpha: 0.4),
+                              blurRadius: 30,
+                              spreadRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          isVideo ? Icons.videocam : Icons.call,
+                          size: 60,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
 
-                    // 1️⃣ NAVIGATE FIRST (CRITICAL)
-                    // Navigator.of(context, rootNavigator: true)
-                    //     .pushReplacement(
-                    //   MaterialPageRoute(
-                    //     builder: (_) => isVideo
-                    //         ? ExpertVideoCall(
-                    //       channel: widget.data['channel'],
-                    //       token: widget.data['token'],
-                    //       callId: widget.callId,
-                    //     )
-                    //         : ExpertAudioCall(
-                    //       channel: widget.data['channel'],
-                    //       token: widget.data['token'],
-                    //     ),
-                    //   ),
-                    // );
-                    if (_navigated) return;
-                    _navigated = true;
+                    // Caller Name
+                    Text(
+                      userName,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                    ),
+                    const SizedBox(height: 12),
 
-                    await FirebaseFirestore.instance
-                        .collection('call_requests')
-                        .doc(widget.callId)
-                        .update({'status': 'accepted',
-                      'acceptedAt': FieldValue.serverTimestamp(),
-                    });
+                    // Birth Details Badge
+                    if (widget.data['birthDetails'] != null)
+                      UserBirthDetailsWidget(
+                        userId: widget.data['userId'] ?? '',
+                        birthDetailsData: widget.data['birthDetails'] as Map<String, dynamic>?,
+                        isCompact: true,
+                        textColor: Colors.white,
+                      ),
+                    const SizedBox(height: 12),
 
-                    // 2️⃣ UPDATE FIRESTORE AFTER (SAFE)
-                    // await FirebaseFirestore.instance
-                    //     .collection('call_requests')
-                    //     .doc(widget.callId)
-                    //     .update({
-                    //   'status': 'accepted',
-                    //   'acceptedAt': FieldValue.serverTimestamp(),
-                    // });
+                    // Call Info Card
+                    GlassCard(
+                      borderRadius: 20,
+                      blur: 12,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isVideo ? Icons.videocam_outlined : Icons.mic_outlined,
+                            color: primaryColor,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            isVideo ? 'Video Call Request' : 'Audio Call Request',
+                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
-                    log("✅ Firestore updated → accepted");
-                  },
+              const Spacer(),
+
+              // Action Buttons
+              SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.5),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(parent: _slideController, curve: Curves.easeOut),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      // ❌ Reject Button
+                      _buildActionButton(
+                        icon: Icons.call_end,
+                        label: 'Reject',
+                        color: Colors.red,
+                        onPressed: () async {
+                          log("❌ REJECT pressed");
+
+                          await FirebaseFirestore.instance
+                              .collection('call_requests')
+                              .doc(widget.callId)
+                              .update({
+                            'status': 'rejected',
+                            'endedAt': FieldValue.serverTimestamp(),
+                            'endedBy': 'expert',
+                          });
+
+                          log("❌ Call rejected");
+                          if (mounted) Navigator.pop(context);
+                        },
+                      ),
+
+                      // ✅ Accept Button (Larger)
+                      GestureDetector(
+                        onTap: _navigated
+                            ? null
+                            : () async {
+                                log("✅ ACCEPT pressed");
+
+                                if (_navigated) return;
+                                _navigated = true;
+
+                                await FirebaseFirestore.instance
+                                    .collection('call_requests')
+                                    .doc(widget.callId)
+                                    .update({
+                                  'status': 'accepted',
+                                  'acceptedAt': FieldValue.serverTimestamp(),
+                                });
+
+                                log("✅ Firestore updated → accepted");
+                              },
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                AppColors.onlineGreen.withValues(alpha: 0.9),
+                                AppColors.onlineGreen.withValues(alpha: 0.7),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.onlineGreen.withValues(alpha: 0.5),
+                                blurRadius: 25,
+                                spreadRadius: 3,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.call,
+                            size: 40,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+
+                      // ℹ️ Info Button
+                      _buildActionButton(
+                        icon: Icons.info_outline,
+                        label: 'Details',
+                        color: primaryColor,
+                        onPressed: () {
+                          _showCallDetails(context, isVideo);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withValues(alpha: 0.2),
+              border: Border.all(
+                color: color.withValues(alpha: 0.5),
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.3),
+                  blurRadius: 15,
+                  spreadRadius: 1,
                 ),
               ],
             ),
-          ],
+            child: Icon(
+              icon,
+              color: color,
+              size: 28,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCallDetails(BuildContext context, bool isVideo) {
+    final userName = widget.data['userName'] ?? 'User';
+    final ratePerMinute = widget.data['ratePerMinute'] ?? '0';
+    final userId = widget.data['userId'] ?? '';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => GlassCard(
+        borderRadius: 28,
+        blur: 15,
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Call Details',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 24),
+              _detailRow('Caller', userName),
+              const SizedBox(height: 16),
+              _detailRow('Call Type', isVideo ? '📹 Video' : '📞 Audio'),
+              const SizedBox(height: 16),
+              _detailRow('Rate', '₹$ratePerMinute/min'),
+              const SizedBox(height: 24),
+              // Birth Details Section
+              if (widget.data['birthDetails'] != null) ...[
+                const Divider(color: Colors.white24),
+                const SizedBox(height: 16),
+                UserBirthDetailsWidget(
+                  userId: userId,
+                  birthDetailsData: widget.data['birthDetails'] as Map<String, dynamic>?,
+                  isCompact: false,
+                ),
+                const SizedBox(height: 16),
+              ],
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.7),
+            fontSize: 14,
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
