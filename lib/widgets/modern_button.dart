@@ -42,7 +42,7 @@ class ModernButton extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
             ),
-            disabledForegroundColor: AppColors.lightTextSecondary.withOpacity(0.5),
+            disabledForegroundColor: AppColors.lightTextSecondary.withValues(alpha: 0.5),
           ),
           child: _buildContent(primaryColor, isDark),
         ),

@@ -1,12 +1,11 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TermsPage extends StatefulWidget {
+  const TermsPage({super.key});
   @override
-  _TermsPageState createState() => _TermsPageState();
+  State<TermsPage> createState() => _TermsPageState();
 }
 
 class _TermsPageState extends State<TermsPage> {
@@ -22,12 +21,13 @@ class _TermsPageState extends State<TermsPage> {
   Future<void> fetchHtmlContent() async {
     try {
       final termsDoc = await FirebaseFirestore.instance.collection('admin').doc('terms').get();
-      log('sdfgjdflkg ${ termsDoc.data()?['terms']}');
+      if (!mounted) return;
       setState(() {
         termsHtml = termsDoc.data()?['terms'] ?? '';
         loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         termsHtml = '<p>Error loading terms & conditions.</p>';
         loading = false;
@@ -39,14 +39,14 @@ class _TermsPageState extends State<TermsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Terms & Conditions'),
+        title: const Text('Terms & Conditions'),
         // backgroundColor: Color(0xFF1c0c1f),
       ),
       // backgroundColor: Color(0xFFc89c6e),
       body: loading
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : (termsHtml.trim().isEmpty
-              ? Center(child: Text('No Terms & Conditions found.', style: TextStyle( fontSize: 18)))
+              ? const Center(child: Text('No Terms & Conditions found.', style: TextStyle( fontSize: 18)))
               : SingleChildScrollView(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),

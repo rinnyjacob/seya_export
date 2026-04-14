@@ -326,7 +326,7 @@ SEYA AuOrA – EXPERT APP''',
                               shape: BoxShape.circle,
                               color: AppColors.lightAccent.withValues(alpha: 0.2),
                             ),
-                            child: Icon(
+                            child: const Icon(
                               Icons.privacy_tip_outlined,
                               color: AppColors.lightAccent,
                               size: 24,

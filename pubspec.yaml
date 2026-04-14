@@ -44,6 +44,15 @@ dependencies:
   intl: ^0.19.0
   flutter_html:
   flutter_animate:
+  url_launcher:
+  emoji_picker_flutter: ^1.6.3
+  webview_flutter:
+  pdfrx:
+  open_filex:
+  path_provider:
+  dio:
+  http: ^1.2.0
+
 
 dev_dependencies:
   flutter_test:

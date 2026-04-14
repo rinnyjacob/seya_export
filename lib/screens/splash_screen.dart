@@ -8,46 +8,31 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
-  late AnimationController _scaleController;
-  late AnimationController _rotateController;
-  late AnimationController _opacityController;
-  late AnimationController _floatController;
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnim;
+  late Animation<double> _fadeOutAnim;
 
   @override
   void initState() {
     super.initState();
 
-    _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 2400),
       vsync: this,
     );
 
-    _rotateController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
+    _scaleAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.5, curve: Curves.easeOut)),
     );
 
-    _opacityController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
+    _fadeOutAnim = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: const Interval(0.8, 1.0, curve: Curves.easeIn)),
     );
 
-    _floatController = AnimationController(
-      duration: const Duration(milliseconds: 3000),
-      vsync: this,
-    )..repeat(reverse: true);
+    _controller.forward();
 
-    _scaleController.forward();
-    _rotateController.forward();
-
-    Future.delayed(const Duration(milliseconds: 2800), () {
-      if (mounted) {
-        _opacityController.forward();
-      }
-    });
-
-    Future.delayed(const Duration(milliseconds: 3600), () {
+    Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil('/auth', (route) => false);
       }
@@ -56,10 +41,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   @override
   void dispose() {
-    _scaleController.dispose();
-    _rotateController.dispose();
-    _opacityController.dispose();
-    _floatController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -68,9 +50,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      body: FadeTransition(
-        opacity: Tween<double>(begin: 1.0, end: 0.0).animate(_opacityController),
-        child: Container(
+      body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
@@ -93,50 +73,34 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
               _buildBackgroundShapes(isDark),
 
               Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ScaleTransition(
-                      scale: Tween<double>(begin: 0.5, end: 1.0)
-                          .animate(CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut)),
-                      child: RotationTransition(
-                        turns: Tween<double>(begin: 0, end: 1)
-                            .animate(CurvedAnimation(parent: _rotateController, curve: Curves.easeInOut)),
-                        child: SlideTransition(
-                          position: Tween<Offset>(begin: Offset.zero, end: const Offset(0, -0.1))
-                              .animate(CurvedAnimation(parent: _floatController, curve: Curves.easeInOut)),
-                          child: _buildLogo(isDark),
+                child: FadeTransition(
+                  opacity: _fadeOutAnim,
+                  child: ScaleTransition(
+                    scale: _scaleAnim,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildLogo(isDark),
+                        const SizedBox(height: 40),
+                        Text(
+                          'SEYA Expert',
+                          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.5,
+                                color: isDark ? Colors.white : AppColors.lightText,
+                              ),
                         ),
-                      ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Professional Expertise on Demand',
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                letterSpacing: 0.5,
+                              ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 40),
-
-                    ScaleTransition(
-                      scale: Tween<double>(begin: 0.8, end: 1.0).animate(
-                        CurvedAnimation(parent: _scaleController, curve: Curves.easeOut),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            'SEYA Expert',
-                            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.5,
-                                  color: isDark ? Colors.white : AppColors.lightText,
-                                ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Professional Expertise on Demand',
-                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                                  letterSpacing: 0.5,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
 
@@ -145,18 +109,13 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                 left: 0,
                 right: 0,
                 child: Center(
-                  child: ScaleTransition(
-                    scale: Tween<double>(begin: 0.8, end: 1.0).animate(
-                      CurvedAnimation(parent: _scaleController, curve: Curves.easeOut),
-                    ),
-                    child: SizedBox(
-                      width: 50,
-                      height: 50,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 3,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          isDark ? AppColors.darkPrimary : AppColors.lightPrimary,
-                        ),
+                  child: SizedBox(
+                    width: 50,
+                    height: 50,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        isDark ? AppColors.darkPrimary : AppColors.lightPrimary,
                       ),
                     ),
                   ),
@@ -165,7 +124,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
             ],
           ),
         ),
-      ),
     );
   }
 

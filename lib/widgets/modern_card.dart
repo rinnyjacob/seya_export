@@ -40,12 +40,12 @@ class ModernCard extends StatelessWidget {
             colors: gradientColors ??
                 (isDark
                     ? [
-                  AppColors.darkPrimary.withOpacity(0.1),
-                  AppColors.darkAccent.withOpacity(0.05),
+                  AppColors.darkPrimary.withValues(alpha: 0.1),
+                  AppColors.darkAccent.withValues(alpha: 0.05),
                 ]
                     : [
-                  AppColors.lightPrimary.withOpacity(0.08),
-                  AppColors.lightAccent.withOpacity(0.04),
+                  AppColors.lightPrimary.withValues(alpha: 0.08),
+                  AppColors.lightAccent.withValues(alpha: 0.04),
                 ]),
           )
               : null,
@@ -54,13 +54,13 @@ class ModernCard extends StatelessWidget {
               : null,
           border: Border.all(
             color: isDark
-                ? AppColors.darkBorder.withOpacity(0.3)
-                : AppColors.lightBorder.withOpacity(0.5),
+                ? AppColors.darkBorder.withValues(alpha: 0.3)
+                : AppColors.lightBorder.withValues(alpha: 0.5),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: (isDark ? Colors.black : Colors.black).withOpacity(0.05),
+              color: (isDark ? Colors.black : Colors.black).withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -8,7 +7,6 @@ import '../call/incoming_call_screen.dart';
 import '../chat/expert_chat_screen.dart';
 import '../earnings/earnings_screen.dart';
 import '../profile/expert_profile_screen.dart';
-import '../screens/all_experts_screen.dart';
 import '../screens/terms_page.dart';
 import '../screens/privacy_page.dart';
 import '../theme/app_colors.dart';
@@ -24,9 +22,39 @@ class ExpertHomeScreen extends StatefulWidget {
   State<ExpertHomeScreen> createState() => _ExpertHomeScreenState();
 }
 
-class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
-  final String expertId = FirebaseAuth.instance.currentUser!.uid;
+class _ExpertHomeScreenState extends State<ExpertHomeScreen>
+    with WidgetsBindingObserver {
+  final String expertId = FirebaseAuth.instance.currentUser?.uid ?? '';
   bool _dialogOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (expertId.isEmpty) return;
+    final docRef = FirebaseFirestore.instance.collection('experts').doc(expertId);
+    if (state == AppLifecycleState.paused) {
+      // App minimized — go offline to avoid ghost presence
+      docRef.update({
+        'is_online': false,
+        'lastSeen': FieldValue.serverTimestamp(),
+        'can_audio': false,
+        'can_video': false,
+        'can_chat': false,
+      }).catchError((_) {});
+    }
+    // Note: we don't auto-go-online when resumed — expert should manually toggle
+  }
 
   /// 🔴 LOGOUT WITH CONFIRMATION
   void _showLogoutDialog(BuildContext context) {
@@ -73,6 +101,8 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
 
   /// 🔴 LOGOUT
   Future<void> _logout(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     try {
       await FirebaseFirestore.instance
           .collection('experts')
@@ -82,22 +112,15 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
         'lastSeen': FieldValue.serverTimestamp(),
       });
 
-      // Clear local terms acceptance on logout
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('termsAccepted_' + expertId);
+      await prefs.remove('termsAccepted_$expertId');
 
       await FirebaseAuth.instance.signOut();
 
-      if (!mounted) return;
-      // Navigator.pushNamedAndRemoveUntil(
-      //   context,
-      //   '/login',
-      //   (_) => false,
-      // );
-      Navigator.pushReplacementNamed(context, '/login');
+      navigator.pushReplacementNamed('/login');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Logout failed")),
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Logout failed')),
       );
     }
   }
@@ -108,6 +131,7 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
     String callId,
     Map<String, dynamic> data,
   ) async {
+    final navigator = Navigator.of(context);
     await FirebaseFirestore.instance
         .collection('call_requests')
         .doc(callId)
@@ -118,11 +142,10 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
 
     if (!mounted) return;
 
-    Navigator.pop(context); // close dialog
+    navigator.pop(); // close dialog
     _dialogOpen = false;
 
-    Navigator.push(
-      context,
+    navigator.push(
       MaterialPageRoute(
         builder: (_) => ExpertChatScreen(
           callId: callId,
@@ -326,7 +349,7 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
                       ),
                     Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.attach_money,
                           size: 16,
                           color: AppColors.lightAccent,
@@ -351,8 +374,10 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
                       label: 'Reject',
                       isOutlined: true,
                       onPressed: () async {
+                        final nav = Navigator.of(context);
                         await _rejectChat(callId);
-                        if (mounted) Navigator.pop(context);
+                        if (!mounted) return;
+                        nav.pop();
                         _dialogOpen = false;
                       },
                     ),
@@ -388,7 +413,7 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
   /// 🎨 BUILD ANIMATED MODERN DRAWER
   Widget _buildAnimatedDrawer(BuildContext context, Color primaryColor) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final expertId = FirebaseAuth.instance.currentUser!.uid;
+    final expertId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     return Drawer(
       backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
@@ -420,6 +445,7 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+
                 // Expert avatar and name (would fetch from Firestore)
                 FutureBuilder<DocumentSnapshot>(
                   future: FirebaseFirestore.instance
@@ -463,7 +489,7 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
+                        const Text(
                           'Expert Dashboard',
                           style: TextStyle(
                             color: Colors.white70,
@@ -528,7 +554,7 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => TermsPage()),
+                      MaterialPageRoute(builder: (_) => const TermsPage()),
                     );
                   },
                   isDark: isDark,
@@ -545,7 +571,7 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => PrivacyPage()),
+                      MaterialPageRoute(builder: (_) => const PrivacyPage()),
                     );
                   },
                   isDark: isDark,
@@ -735,7 +761,8 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
             onChanged: (value) {
               themeProvider.setDarkMode(value);
             },
-            activeColor: primaryColor,
+            activeThumbColor: primaryColor,
+            activeTrackColor: primaryColor.withValues(alpha: 0.5),
           ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           hoverColor: primaryColor.withValues(alpha: 0.1),
@@ -763,7 +790,6 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
             ),
           ],
         ),
-
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
@@ -782,14 +808,6 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
           // final isOnline = expertData['is_online'] == true;
           // final expertName = expertData['name'] ?? 'Expert';
 
-          final allowAudio = expertData['allow_audio'] == true;
-          final allowVideo = expertData['allow_video'] == true;
-          final allowChat = expertData['allow_chat'] == true;
-
-          final canAudio = expertData['can_audio'] == true;
-          final canVideo = expertData['can_video'] == true;
-          final canChat = expertData['can_chat'] == true;
-
           return StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('call_requests')
@@ -805,7 +823,6 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
                 final doc = callSnap.data!.docs.first;
                 final data = doc.data() as Map<String, dynamic>;
 
-                log('kbfgdjksghfsw4785 ${data['type']}');
 
                 if (data['type'] == 'audio' || data['type'] == 'video') {
                   return IncomingCallScreen(
@@ -816,10 +833,14 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
                   );
                 }
 
-                // For chat requests, show dialog
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _showChatDialog(context, doc.id, data);
-                });
+                // For chat requests, show dialog (guard against duplicates)
+                if (!_dialogOpen) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted && !_dialogOpen) {
+                      _showChatDialog(context, doc.id, data);
+                    }
+                  });
+                }
               }
 
               // Normal dashboard view
@@ -844,7 +865,6 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-
                             /// HEADER
                             Row(
                               children: [
@@ -870,19 +890,47 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
                                     ),
                                   ),
                                 ),
-
                                 Switch(
                                   value: isOnline,
                                   onChanged: (value) async {
-                                    await FirebaseFirestore.instance
+                                    final docRef = FirebaseFirestore.instance
                                         .collection('experts')
-                                        .doc(expertId)
-                                        .update({
-                                      'is_online': value,
-                                      'lastSeen': FieldValue.serverTimestamp(),
-                                    });
+                                        .doc(expertId);
+                                    try {
+                                      final snap = await docRef.get();
+                                      final data = snap.data() ?? {};
+
+                                      if (value) {
+                                        await docRef.update({
+                                          'is_online': true,
+                                          'lastSeen': FieldValue.serverTimestamp(),
+                                          'can_audio': data['allow_audio'] == true,
+                                          'can_video': data['allow_video'] == true,
+                                          'can_chat': data['allow_chat'] == true,
+                                        });
+                                      } else {
+                                        await docRef.update({
+                                          'is_online': false,
+                                          'lastSeen': FieldValue.serverTimestamp(),
+                                          'can_audio': false,
+                                          'can_video': false,
+                                          'can_chat': false,
+                                        });
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(value
+                                                ? 'Failed to go online. Check your connection.'
+                                                : 'Failed to go offline. Check your connection.'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    }
                                   },
-                                  activeColor: Colors.white,
+                                  activeThumbColor: Colors.white,
                                 )
                               ],
                             ),
@@ -891,122 +939,53 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
 
                             /// MODES
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              // alignment: WrapAlignment.center,
+                              // crossAxisAlignment: WrapCrossAlignment.center,
+
                               children: [
+                                expertData['allow_audio'] == true?
 
                                 _modeChip(
                                   label: "Audio",
                                   icon: Icons.headset,
                                   enabled: expertData['can_audio'] == true,
-                                  allowed: expertData['allow_audio'] == true,
+                                  // allowed: expertData['allow_audio'] == true,
                                   field: "can_audio",
-                                  primaryColor:primaryColor,
-                                ),
+                                  primaryColor:Colors.green,
+                                  isOnline:isOnline,
+                                ):const SizedBox(),
+                                expertData['allow_video'] == true?
 
                                 _modeChip(
                                   label: "Video",
                                   icon: Icons.videocam,
                                   enabled: expertData['can_video'] == true,
-                                  allowed: expertData['allow_video'] == true,
+                                  // allowed: expertData['allow_video'] == true,
                                   field: "can_video",
-                                  primaryColor:primaryColor,
+                                  primaryColor:Colors.green,
+                                  isOnline:isOnline,
 
-                                ),
 
+                                ):const SizedBox(),
+                                expertData['allow_chat'] == true?
                                 _modeChip(
                                   label: "Chat",
                                   icon: Icons.chat,
                                   enabled: expertData['can_chat'] == true,
-                                  allowed: expertData['allow_chat'] == true,
+                                  // allowed: expertData['allow_chat'] == true,
                                   field: "can_chat",
-                                  primaryColor:primaryColor,
+                                  primaryColor:Colors.green,
+                                  isOnline:isOnline,
 
-                                ),
+
+                                ):const SizedBox(),
                               ],
                             )
                           ],
                         ),
                       ),
                     ),
-                    // SliverToBoxAdapter(
-                    //   child: Container(
-                    //     margin: const EdgeInsets.all(16),
-                    //     padding: const EdgeInsets.all(20),
-                    //     decoration: BoxDecoration(
-                    //       borderRadius: BorderRadius.circular(16),
-                    //       gradient: LinearGradient(
-                    //         colors: [
-                    //           primaryColor,
-                    //           primaryColor.withValues(alpha: 0.7),
-                    //         ],
-                    //       ),
-                    //       boxShadow: [
-                    //         BoxShadow(
-                    //           color: primaryColor.withValues(alpha: 0.3),
-                    //           blurRadius: 12,
-                    //           spreadRadius: 2,
-                    //         ),
-                    //       ],
-                    //     ),
-                    //     child: Column(
-                    //       crossAxisAlignment: CrossAxisAlignment.start,
-                    //       children: [
-                    //         Row(
-                    //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    //           children: [
-                    //             Expanded(
-                    //               child: Column(
-                    //                 crossAxisAlignment: CrossAxisAlignment.start,
-                    //                 children: [
-                    //                   Text(
-                    //                     'Welcome, $expertName',
-                    //                     style: Theme.of(context)
-                    //                         .textTheme
-                    //                         .titleLarge
-                    //                         ?.copyWith(
-                    //                           color: Colors.white,
-                    //                           fontWeight: FontWeight.w700,
-                    //                         ),
-                    //                   ),
-                    //                   const SizedBox(height: 8),
-                    //                   Text(
-                    //                     isOnline
-                    //                         ? '🟢 Online & Available'
-                    //                         : '🔴 Offline',
-                    //                     style: Theme.of(context)
-                    //                         .textTheme
-                    //                         .bodyMedium
-                    //                         ?.copyWith(
-                    //                           color: Colors.white70,
-                    //                         ),
-                    //                   ),
-                    //                 ],
-                    //               ),
-                    //             ),
-                    //             // Online/Offline Toggle Switch
-                    //             Switch(
-                    //               value: isOnline,
-                    //               onChanged: (value) async {
-                    //                 await FirebaseFirestore.instance
-                    //                     .collection('experts')
-                    //                     .doc(expertId)
-                    //                     .update({
-                    //                   'is_online': value,
-                    //                   'lastSeen': FieldValue.serverTimestamp(),
-                    //                 });
-                    //               },
-                    //               activeColor: Colors.white,
-                    //               activeTrackColor: Colors.green.withValues(alpha: 0.8),
-                    //               inactiveThumbColor: Colors.white,
-                    //               inactiveTrackColor: Colors.red.withValues(alpha: 0.5),
-                    //             ),
-                    //           ],
-                    //         ),
-                    //       ],
-                    //     ),
-                    //   ),
-                    // ),
-
                   // Main content
                   if (!isOnline)
                     SliverFillRemaining(
@@ -1080,8 +1059,8 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
                       ),
                     )
                   else
-                    SliverFillRemaining(
-                      child: const Center(
+                    const SliverFillRemaining(
+                      child: Center(
                         child: Text("Incoming chat request…"),
                       ),
                     ),
@@ -1097,40 +1076,63 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
     required String label,
     required IconData icon,
     required bool enabled,
-    required bool allowed,
-    required String field, required Color primaryColor,
+    required String field,
+    required Color primaryColor,
+    required bool isOnline,
   }) {
     return GestureDetector(
-      onTap: allowed
-          ? () async {
-        await FirebaseFirestore.instance
-            .collection('experts')
-            .doc(expertId)
-            .update({field: !enabled});
-      }
-          : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          color: enabled ? Colors.white : Colors.white.withValues(alpha: .15),
-        ),
-        child: Column(
-          children: [
+      onTap: () async {
+        if (!isOnline) return;
 
+        final docRef =
+        FirebaseFirestore.instance.collection('experts').doc(expertId);
+
+        /// 🔥 Toggle current field
+        await docRef.update({field: !enabled});
+
+        /// 🔥 Get updated data
+        final snap = await docRef.get();
+        final data = snap.data() ?? {};
+
+        final canAudio = data['can_audio'] == true;
+        final canVideo = data['can_video'] == true;
+        final canChat = data['can_chat'] == true;
+
+        /// 🔥 If ALL OFF → set offline
+        if (!canAudio && !canVideo && !canChat) {
+          await docRef.update({
+            'is_online': false,
+            'lastSeen': FieldValue.serverTimestamp(),
+          });
+        }
+      },
+
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: !isOnline
+              ? Colors.red.withValues(alpha: 0.2)
+              : enabled
+              ? primaryColor
+              : Colors.white.withValues(alpha: .06),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
             Icon(
               icon,
-              color: enabled ? primaryColor : Colors.white,
+              size: 18,
+              color: enabled ? Colors.white : Colors.white70,
             ),
-
-            const SizedBox(height: 6),
-
+            const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
-                color: enabled ? primaryColor : Colors.white,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
+                color: enabled ? Colors.white : Colors.white70,
               ),
             ),
           ],
@@ -1141,10 +1143,11 @@ class _ExpertHomeScreenState extends State<ExpertHomeScreen> {
 }
 
 /// Screen to display all reviews for the expert
-class _AllReviewsScreen extends StatelessWidget {
+class AllReviewsScreen extends StatelessWidget {
+  const AllReviewsScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    final expertId = FirebaseAuth.instance.currentUser!.uid;
+    final expertId = FirebaseAuth.instance.currentUser?.uid ?? '';
     return Scaffold(
       appBar: AppBar(
         title: const Text('All Reviews'),
@@ -1181,7 +1184,7 @@ class _AllReviewsScreen extends StatelessWidget {
                 title: Text(data['userName'] ?? 'User'),
                 subtitle: Row(
                   children: [
-                    Icon(Icons.star, color: Colors.amber, size: 16),
+                    const Icon(Icons.star, color: Colors.amber, size: 16),
                     const SizedBox(width: 4),
                     Text('${data['rating'] ?? '-'}'),
                   ],

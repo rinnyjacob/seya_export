@@ -12,6 +12,7 @@ class ModernTextField extends StatefulWidget {
   final VoidCallback? onSuffixTap;
   final String? Function(String?)? validator;
   final int maxLines;
+  final bool readOnly;
 
   const ModernTextField({
     super.key,
@@ -25,6 +26,7 @@ class ModernTextField extends StatefulWidget {
     this.onSuffixTap,
     this.validator,
     this.maxLines = 1,
+    this.readOnly = false,
   });
 
   @override
@@ -81,78 +83,82 @@ class _ModernTextFieldState extends State<ModernTextField> with TickerProviderSt
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = isDark ? AppColors.darkPrimary : AppColors.lightPrimary;
 
-    return Focus(
-      onFocusChange: (hasFocus) {
-        setState(() {});
-      },
-      child: TextFormField(
-        controller: widget.controller,
-        obscureText: _obscureText,
-        keyboardType: widget.keyboardType,
-        maxLines: _obscureText ? 1 : widget.maxLines,
-        focusNode: _focusNode,
-        validator: widget.validator,
-        decoration: InputDecoration(
-          labelText: widget.label,
-          hintText: widget.hint,
-          prefixIcon: widget.prefixIcon != null
-              ? Icon(widget.prefixIcon)
-              : null,
-          suffixIcon: widget.suffixIcon != null
-              ? GestureDetector(
-                  onTap: _togglePasswordVisibility,
-                  child: ScaleTransition(
-                    scale: Tween<double>(begin: 1.0, end: 1.15).animate(
-                      CurvedAnimation(parent: _eyeController, curve: Curves.elasticOut),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: Icon(
-                        widget.suffixIcon,
-                        color: _obscureText
-                            ? (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)
-                            : primaryColor,
+    return IgnorePointer(
+      ignoring: widget.readOnly,
+      child: Focus(
+        onFocusChange: (hasFocus) {
+          setState(() {});
+        },
+        child: TextFormField(
+          controller: widget.controller,
+          obscureText: _obscureText,
+          readOnly: widget.readOnly,
+          keyboardType: widget.keyboardType,
+          maxLines: _obscureText ? 1 : widget.maxLines,
+          focusNode: _focusNode,
+          validator: widget.validator,
+          decoration: InputDecoration(
+            labelText: widget.label,
+            hintText: widget.hint,
+            prefixIcon: widget.prefixIcon != null
+                ? Icon(widget.prefixIcon)
+                : null,
+            suffixIcon: widget.suffixIcon != null
+                ? GestureDetector(
+                    onTap: _togglePasswordVisibility,
+                    child: ScaleTransition(
+                      scale: Tween<double>(begin: 1.0, end: 1.15).animate(
+                        CurvedAnimation(parent: _eyeController, curve: Curves.elasticOut),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Icon(
+                          widget.suffixIcon,
+                          color: _obscureText
+                              ? (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)
+                              : primaryColor,
+                        ),
                       ),
                     ),
-                  ),
-                )
-              : null,
-          filled: true,
-          fillColor: isDark
-              ? AppColors.darkSurfaceSecondary
-              : AppColors.lightDivider,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: _focusNode.hasFocus
-                ? BorderSide(
-                    color: primaryColor,
-                    width: 2,
                   )
-                : BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(
-              color: primaryColor,
-              width: 2,
+                : null,
+            filled: true,
+            fillColor: isDark
+                ? AppColors.darkSurfaceSecondary
+                : AppColors.lightDivider,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
             ),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(
-              color: isDark ? AppColors.darkError : AppColors.lightError,
-              width: 2,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: _focusNode.hasFocus
+                  ? BorderSide(
+                      color: primaryColor,
+                      width: 2,
+                    )
+                  : BorderSide.none,
             ),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(
-              color: isDark ? AppColors.darkError : AppColors.lightError,
-              width: 2,
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color: primaryColor,
+                width: 2,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color: isDark ? AppColors.darkError : AppColors.lightError,
+                width: 2,
+              ),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color: isDark ? AppColors.darkError : AppColors.lightError,
+                width: 2,
+              ),
             ),
           ),
         ),

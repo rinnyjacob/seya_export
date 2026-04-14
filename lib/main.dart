@@ -21,9 +21,7 @@ void main() async {
 
   try {
     await Firebase.initializeApp();
-    print('✅ Firebase initialized successfully');
   } catch (e) {
-    print('❌ Firebase initialization error: $e');
     rethrow;
   }
 
@@ -132,5 +130,5 @@ class AuthCheck extends StatelessWidget {
 // Helper for AuthCheck
 Future<bool> _checkLocalTermsAccepted(String userId) async {
   final prefs = await SharedPreferences.getInstance();
-  return prefs.getBool('termsAccepted_' + userId) == true;
+  return prefs.getBool('termsAccepted_$userId') == true;
 }

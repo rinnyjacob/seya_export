@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../theme/app_colors.dart';
 
 class TermsPrivacyPolicyScreen extends StatefulWidget {
+  const TermsPrivacyPolicyScreen({super.key});
   @override
-  _TermsPrivacyPolicyScreenState createState() => _TermsPrivacyPolicyScreenState();
+  State<TermsPrivacyPolicyScreen> createState() => _TermsPrivacyPolicyScreenState();
 }
 
 class _TermsPrivacyPolicyScreenState extends State<TermsPrivacyPolicyScreen> {
@@ -20,14 +22,16 @@ class _TermsPrivacyPolicyScreenState extends State<TermsPrivacyPolicyScreen> {
 
   Future<void> fetchHtmlContent() async {
     try {
-      final privacyDoc = await FirebaseFirestore.instance.collection('privacy').doc('privacy').get();
-      final termsDoc = await FirebaseFirestore.instance.collection('terms').doc('terms').get();
+      final privacyDoc = await FirebaseFirestore.instance.collection('admin').doc('privacy').get();
+      final termsDoc = await FirebaseFirestore.instance.collection('admin').doc('terms').get();
+      if (!mounted) return;
       setState(() {
         privacyHtml = privacyDoc.data()?['privacy'] ?? '';
         termsHtml = termsDoc.data()?['terms'] ?? '';
         loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         privacyHtml = '<p>Error loading privacy policy.</p>';
         termsHtml = '<p>Error loading terms & conditions.</p>';
@@ -38,14 +42,19 @@ class _TermsPrivacyPolicyScreenState extends State<TermsPrivacyPolicyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primary = isDark ? AppColors.darkPrimary : AppColors.lightPrimary;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final bgColor = isDark ? AppColors.darkSurface : Colors.white;
+
     return Scaffold(
+      backgroundColor: bgColor,
       appBar: AppBar(
-        title: Text('Terms & Conditions / Privacy Policy'),
-        backgroundColor: Color(0xFF1c0c1f),
+        title: const Text('Terms & Conditions / Privacy Policy'),
+        backgroundColor: bgColor,
       ),
-      // backgroundColor: Color(0xFFc89c6e),
       body: loading
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -54,7 +63,7 @@ class _TermsPrivacyPolicyScreenState extends State<TermsPrivacyPolicyScreen> {
                   children: [
                     Text('Terms & Conditions',
                         style: TextStyle(
-                          color: Color(0xFF1c0c1f),
+                          color: primary,
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                         )),
@@ -63,8 +72,7 @@ class _TermsPrivacyPolicyScreenState extends State<TermsPrivacyPolicyScreen> {
                       data: termsHtml,
                       style: {
                         "body": Style(
-                          color: Color(0xFF1c0c1f),
-                          backgroundColor: Color(0xFFc89c6e),
+                          color: textColor,
                           fontSize: FontSize.large,
                         ),
                       },
@@ -72,7 +80,7 @@ class _TermsPrivacyPolicyScreenState extends State<TermsPrivacyPolicyScreen> {
                     const SizedBox(height: 24),
                     Text('Privacy Policy',
                         style: TextStyle(
-                          color: Color(0xFF1c0c1f),
+                          color: primary,
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                         )),
@@ -81,8 +89,7 @@ class _TermsPrivacyPolicyScreenState extends State<TermsPrivacyPolicyScreen> {
                       data: privacyHtml,
                       style: {
                         "body": Style(
-                          color: Color(0xFF1c0c1f),
-                          backgroundColor: Color(0xFFc89c6e),
+                          color: textColor,
                           fontSize: FontSize.large,
                         ),
                       },

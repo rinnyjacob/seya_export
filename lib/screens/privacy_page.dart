@@ -3,8 +3,9 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PrivacyPage extends StatefulWidget {
+  const PrivacyPage({super.key});
   @override
-  _PrivacyPageState createState() => _PrivacyPageState();
+  State<PrivacyPage> createState() => _PrivacyPageState();
 }
 
 class _PrivacyPageState extends State<PrivacyPage> {
@@ -22,11 +23,13 @@ class _PrivacyPageState extends State<PrivacyPage> {
       // final termsDoc = await FirebaseFirestore.instance.collection('admin').doc('terms').get();
 
       final privacyDoc = await FirebaseFirestore.instance.collection('admin').doc('privacy').get();
+      if (!mounted) return;
       setState(() {
         privacyHtml = privacyDoc.data()?['privacy'] ?? '';
         loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         privacyHtml = '<p>Error loading privacy policy.</p>';
         loading = false;
@@ -36,15 +39,14 @@ class _PrivacyPageState extends State<PrivacyPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text('Privacy Policy'),
+        title: const Text('Privacy Policy'),
         // backgroundColor: Color(0xFF1c0c1f),
       ),
       // backgroundColor: Color(0xFFc89c6e),
       body: loading
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),

@@ -8,7 +8,7 @@ class AppTheme {
       brightness: Brightness.light,
       primaryColor: AppColors.lightPrimary,
       scaffoldBackgroundColor: AppColors.lightBackground,
-      colorScheme: ColorScheme.light(
+      colorScheme: const ColorScheme.light(
         primary: AppColors.lightPrimary,
         onPrimary: Colors.white,
         primaryContainer: AppColors.lightPrimaryTransparent,
@@ -18,25 +18,23 @@ class AppTheme {
         onSurface: AppColors.lightText,
         error: AppColors.lightError,
         onError: Colors.white,
-        background: AppColors.lightBackground,
-        onBackground: AppColors.lightText,
       ),
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.lightSurface,
         foregroundColor: AppColors.lightText,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: const TextStyle(
+        titleTextStyle: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: AppColors.lightText,
         ),
-        iconTheme: const IconThemeData(color: AppColors.lightText),
+        iconTheme: IconThemeData(color: AppColors.lightText),
       ),
       cardTheme: CardThemeData(
         color: AppColors.lightSurface,
         elevation: 2,
-        shadowColor: Colors.black.withOpacity(0.08),
+        shadowColor: Colors.black.withValues(alpha: 0.08),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -159,7 +157,7 @@ class AppTheme {
       brightness: Brightness.dark,
       primaryColor: AppColors.darkPrimary,
       scaffoldBackgroundColor: AppColors.darkBackground,
-      colorScheme: ColorScheme.dark(
+      colorScheme: const ColorScheme.dark(
         primary: AppColors.darkPrimary,
         onPrimary: AppColors.darkBackground,
         primaryContainer: AppColors.darkPrimaryTransparent,
@@ -169,25 +167,23 @@ class AppTheme {
         onSurface: AppColors.darkText,
         error: AppColors.darkError,
         onError: AppColors.darkBackground,
-        background: AppColors.darkBackground,
-        onBackground: AppColors.darkText,
       ),
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.darkSurface,
         foregroundColor: AppColors.darkText,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: const TextStyle(
+        titleTextStyle: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: AppColors.darkText,
         ),
-        iconTheme: const IconThemeData(color: AppColors.darkText),
+        iconTheme: IconThemeData(color: AppColors.darkText),
       ),
       cardTheme: CardThemeData(
         color: AppColors.darkSurface,
         elevation: 2,
-        shadowColor: Colors.black.withOpacity(0.3),
+        shadowColor: Colors.black.withValues(alpha: 0.3),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),

@@ -121,6 +121,7 @@
 //     );
 //   }
 // }
+import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -147,8 +148,13 @@ class IncomingCallScreen extends StatefulWidget {
 class _IncomingCallScreenState extends State<IncomingCallScreen>
     with TickerProviderStateMixin {
   bool _navigated = false;
+  bool _rejecting = false;
   late AnimationController _pulseController;
   late AnimationController _slideController;
+  StreamSubscription<DocumentSnapshot>? _callSub;
+  Timer? _autoRejectTimer;
+
+  static const int _autoRejectSeconds = 60;
 
   @override
   void initState() {
@@ -164,18 +170,72 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
       vsync: this,
     )..forward();
 
-    FirebaseFirestore.instance
+    _callSub = FirebaseFirestore.instance
         .collection('call_requests')
         .doc(widget.callId)
         .snapshots()
-        .listen((doc) {
-      if (!doc.exists) return;
+        .listen(
+      (doc) {
+        if (!doc.exists) return;
+        final status = doc.data()?['status'];
+        // Auto-dismiss if call was cancelled by user or already ended
+        if (status == 'accepted' && mounted && !_navigated) {
+          _navigated = true;
+          _autoRejectTimer?.cancel();
+          _goToCall();
+        } else if ((status == 'ended' || status == 'cancelled') && mounted && !_navigated) {
+          _navigated = true;
+          _autoRejectTimer?.cancel();
+          Navigator.of(context).pop();
+        }
+      },
+      onError: (e) => log('IncomingCallScreen stream error: $e'),
+    );
 
-      if (doc['status'] == 'accepted' && mounted) {
-        _goToCall();
+    // Auto-reject after 60 seconds if no response
+    _autoRejectTimer = Timer(const Duration(seconds: _autoRejectSeconds), () {
+      if (mounted && !_navigated) {
+        _rejectCall();
       }
     });
+
     log("📞 IncomingCallScreen INIT | callId=${widget.callId}");
+  }
+
+  Future<void> _acceptCall() async {
+    if (_navigated) return;
+    _navigated = true;
+    _autoRejectTimer?.cancel();
+    log("✅ ACCEPT pressed → navigating immediately");
+    _goToCall();
+    // Update Firestore in background
+    FirebaseFirestore.instance
+        .collection('call_requests')
+        .doc(widget.callId)
+        .update({
+      'status': 'accepted',
+      'acceptedAt': FieldValue.serverTimestamp(),
+    }).catchError((e) => log('Accept Firestore error: $e'));
+  }
+
+  Future<void> _rejectCall() async {
+    if (_navigated || _rejecting) return;
+    setState(() => _rejecting = true);
+    _navigated = true;
+    _autoRejectTimer?.cancel();
+    final nav = Navigator.of(context);
+    try {
+      await FirebaseFirestore.instance
+          .collection('call_requests')
+          .doc(widget.callId)
+          .update({
+        'status': 'rejected',
+        'endedAt': FieldValue.serverTimestamp(),
+        'endedBy': 'expert',
+      });
+    } catch (_) {}
+    log("❌ Call rejected");
+    if (mounted) nav.pop();
   }
 
   void _goToCall() {
@@ -201,9 +261,10 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
 
   @override
   void dispose() {
+    _callSub?.cancel();
+    _autoRejectTimer?.cancel();
     _pulseController.dispose();
     _slideController.dispose();
-    log("❌ IncomingCallScreen DISPOSED | callId=${widget.callId}");
     super.dispose();
   }
 
@@ -378,43 +439,12 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                         icon: Icons.call_end,
                         label: 'Reject',
                         color: Colors.red,
-                        onPressed: () async {
-                          log("❌ REJECT pressed");
-
-                          await FirebaseFirestore.instance
-                              .collection('call_requests')
-                              .doc(widget.callId)
-                              .update({
-                            'status': 'rejected',
-                            'endedAt': FieldValue.serverTimestamp(),
-                            'endedBy': 'expert',
-                          });
-
-                          log("❌ Call rejected");
-                          if (mounted) Navigator.pop(context);
-                        },
+                        onPressed: _rejecting ? () {} : _rejectCall,
                       ),
 
                       // ✅ Accept Button (Larger)
                       GestureDetector(
-                        onTap: _navigated
-                            ? null
-                            : () async {
-                                log("✅ ACCEPT pressed");
-
-                                if (_navigated) return;
-                                _navigated = true;
-
-                                await FirebaseFirestore.instance
-                                    .collection('call_requests')
-                                    .doc(widget.callId)
-                                    .update({
-                                  'status': 'accepted',
-                                  'acceptedAt': FieldValue.serverTimestamp(),
-                                });
-
-                                log("✅ Firestore updated → accepted");
-                              },
+                        onTap: _navigated ? null : _acceptCall,
                         child: Container(
                           width: 80,
                           height: 80,

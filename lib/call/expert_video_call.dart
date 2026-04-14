@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../config/agora_config.dart';
 import '../theme/app_colors.dart';
 import '../widgets/user_birth_details_widget.dart';
 
@@ -24,9 +25,12 @@ class ExpertVideoCall extends StatefulWidget {
   State<ExpertVideoCall> createState() => _ExpertVideoCallState();
 }
 
-class _ExpertVideoCallState extends State<ExpertVideoCall> with TickerProviderStateMixin {
+class _ExpertVideoCallState extends State<ExpertVideoCall>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   RtcEngine? _engine;
   bool _engineReady = false;
+  bool _initError = false;
+  String _initErrorMsg = '';
 
   int? remoteUid;
 
@@ -44,12 +48,24 @@ class _ExpertVideoCallState extends State<ExpertVideoCall> with TickerProviderSt
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _controlsController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
     _initAgora();
     _listenCallEnd();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      // Disable camera when backgrounded, keep audio
+      _engine?.enableLocalVideo(false);
+    } else if (state == AppLifecycleState.resumed) {
+      // Restore camera state when foregrounded
+      if (_cameraOn) _engine?.enableLocalVideo(true);
+    }
   }
 
   void _listenCallEnd() {
@@ -59,7 +75,7 @@ class _ExpertVideoCallState extends State<ExpertVideoCall> with TickerProviderSt
         .snapshots()
         .listen((doc) {
       if (!doc.exists) return;
-      if (doc['status'] == 'ended' && !_callEnded) {
+      if (doc.data()?['status'] == 'ended' && !_callEnded) {
         _callEnded = true;
         _closeAndExit();
       }
@@ -67,46 +83,80 @@ class _ExpertVideoCallState extends State<ExpertVideoCall> with TickerProviderSt
   }
 
   Future<void> _initAgora() async {
-    await [Permission.microphone, Permission.camera].request();
+    // Check permissions first
+    final statuses = await [Permission.microphone, Permission.camera].request();
+    final micGranted = statuses[Permission.microphone]?.isGranted ?? false;
+    final camGranted = statuses[Permission.camera]?.isGranted ?? false;
 
-    final engine = createAgoraRtcEngine();
+    if (!micGranted || !camGranted) {
+      if (mounted) {
+        setState(() {
+          _initError = true;
+          _initErrorMsg = !micGranted
+              ? 'Microphone permission denied.'
+              : 'Camera permission denied.';
+        });
+      }
+      return;
+    }
 
-    await engine.initialize(
-      const RtcEngineContext(
-        appId: "cdfbd7f0f20a458cbf31445e91172951",
-        channelProfile: ChannelProfileType.channelProfileCommunication,
-      ),
-    );
+    try {
+      final engine = createAgoraRtcEngine();
 
-    engine.registerEventHandler(
-      RtcEngineEventHandler(
-        onUserJoined: (_, uid, __) {
-          if (remoteUid == null) {
-            setState(() => remoteUid = uid);
-            _startTimer();
-          }
-        },
-        onUserOffline: (_, __, ___) {
-          _endCall();
-        },
-      ),
-    );
+      await engine.initialize(
+        const RtcEngineContext(
+          appId: AgoraConfig.appId,
+          channelProfile: ChannelProfileType.channelProfileCommunication,
+        ),
+      );
 
-    await engine.enableVideo();
-    await engine.enableAudio();
-    await engine.startPreview();
+      engine.registerEventHandler(
+        RtcEngineEventHandler(
+          onUserJoined: (_, uid, __) {
+            if (remoteUid == null) {
+              if (mounted) setState(() => remoteUid = uid);
+              _startTimer();
+            }
+          },
+          onUserOffline: (_, __, ___) {
+            _endCall();
+          },
+          onConnectionStateChanged: (connection, state, reason) {
+            if (state == ConnectionStateType.connectionStateFailed && mounted) {
+              setState(() {
+                _initError = true;
+                _initErrorMsg = 'Connection failed. Please check your network.';
+              });
+            }
+          },
+        ),
+      );
 
-    await engine.joinChannel(
-      token: widget.token,
-      channelId: widget.channel,
-      uid: 0,
-      options: const ChannelMediaOptions(),
-    );
+      await engine.enableVideo();
+      await engine.enableAudio();
+      await engine.startPreview();
 
-    setState(() {
-      _engine = engine;
-      _engineReady = true;
-    });
+      await engine.joinChannel(
+        token: widget.token,
+        channelId: widget.channel,
+        uid: 0,
+        options: const ChannelMediaOptions(),
+      );
+
+      if (mounted) {
+        setState(() {
+          _engine = engine;
+          _engineReady = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _initError = true;
+          _initErrorMsg = 'Failed to start video call: ${e.toString()}';
+        });
+      }
+    }
   }
 
   void _startTimer() {
@@ -119,12 +169,6 @@ class _ExpertVideoCallState extends State<ExpertVideoCall> with TickerProviderSt
     final m = _seconds ~/ 60;
     final s = _seconds % 60;
     return "${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}";
-  }
-
-  void _toggleCamera() {
-    _cameraOn = !_cameraOn;
-    _engine?.enableLocalVideo(_cameraOn);
-    setState(() {});
   }
 
   void _toggleMute() {
@@ -430,6 +474,7 @@ class _ExpertVideoCallState extends State<ExpertVideoCall> with TickerProviderSt
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _callSub?.cancel();
     _controlsController.dispose();
@@ -445,7 +490,7 @@ class _ExpertVideoCallState extends State<ExpertVideoCall> with TickerProviderSt
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.videocam_off, color: Colors.white30, size: 60),
+              const Icon(Icons.videocam_off, color: Colors.white30, size: 60),
               const SizedBox(height: 16),
               Text(
                 "Waiting for user…",
@@ -507,8 +552,38 @@ class _ExpertVideoCallState extends State<ExpertVideoCall> with TickerProviderSt
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = isDark ? AppColors.darkPrimary : AppColors.lightPrimary;
 
-    return WillPopScope(
-      onWillPop: () async {
+    if (_initError) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.videocam_off, color: Colors.red, size: 64),
+                const SizedBox(height: 16),
+                Text(_initErrorMsg, textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 8),
+                const Text('Please grant permissions in Settings and try again.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey)),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _endCall,
+                  child: const Text('Go Back'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
         final shouldEnd = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -528,9 +603,7 @@ class _ExpertVideoCallState extends State<ExpertVideoCall> with TickerProviderSt
         );
         if (shouldEnd == true) {
           await _endCall();
-          return false;
         }
-        return false;
       },
       child: GestureDetector(
         onTap: () {
@@ -653,7 +726,7 @@ class _ExpertVideoCallState extends State<ExpertVideoCall> with TickerProviderSt
               ),
 
               // Bottom controls
-              if (_showControls)
+              // if (_showControls)
                 Positioned(
                   bottom: 0,
                   left: 0,
@@ -687,67 +760,72 @@ class _ExpertVideoCallState extends State<ExpertVideoCall> with TickerProviderSt
                                     return const SizedBox.shrink();
                                   }
 
-                                  return GestureDetector(
-                                    onTap: () => _showBirthDetailsDialog(birthDetails),
-                                    child: MouseRegion(
-                                      cursor: SystemMouseCursors.click,
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              Colors.blue.withValues(alpha: 0.3),
-                                              Colors.purple.withValues(alpha: 0.2),
-                                            ],
-                                          ),
-                                          borderRadius: BorderRadius.circular(20),
-                                          border: Border.all(
-                                            color: Colors.white.withValues(alpha: 0.2),
-                                            width: 1.5,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.blue.withValues(alpha: 0.2),
-                                              blurRadius: 16,
-                                              spreadRadius: 2,
-                                            ),
-                                          ],
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(16),
-                                          child: Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Expanded(
-                                                child: UserBirthDetailsWidget(
-                                                  userId: widget.userId,
-                                                  birthDetailsData: birthDetails,
-                                                  isCompact: false,
-                                                ),
-                                              ),
-                                              Container(
-                                                width: 40,
-                                                height: 40,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  gradient: LinearGradient(
-                                                    colors: [
-                                                      Colors.blue.withValues(alpha: 0.5),
-                                                      Colors.purple.withValues(alpha: 0.3),
-                                                    ],
-                                                  ),
-                                                ),
-                                                child: const Icon(
-                                                  Icons.arrow_outward,
-                                                  color: Colors.white,
-                                                  size: 20,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  );
+
+
+                                  return ElevatedButton(onPressed: (){
+                                    _showBirthDetailsDialog(birthDetails);
+                                  }, child: const Text("Birth Details"));
+                                  // return GestureDetector(
+                                  //   onTap: () => _showBirthDetailsDialog(birthDetails),
+                                  //   child: MouseRegion(
+                                  //     cursor: SystemMouseCursors.click,
+                                  //     child: Container(
+                                  //       decoration: BoxDecoration(
+                                  //         gradient: LinearGradient(
+                                  //           colors: [
+                                  //             Colors.blue.withValues(alpha: 0.3),
+                                  //             Colors.purple.withValues(alpha: 0.2),
+                                  //           ],
+                                  //         ),
+                                  //         borderRadius: BorderRadius.circular(20),
+                                  //         border: Border.all(
+                                  //           color: Colors.white.withValues(alpha: 0.2),
+                                  //           width: 1.5,
+                                  //         ),
+                                  //         boxShadow: [
+                                  //           BoxShadow(
+                                  //             color: Colors.blue.withValues(alpha: 0.2),
+                                  //             blurRadius: 16,
+                                  //             spreadRadius: 2,
+                                  //           ),
+                                  //         ],
+                                  //       ),
+                                  //       child: Padding(
+                                  //         padding: const EdgeInsets.all(16),
+                                  //         child: Row(
+                                  //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  //           children: [
+                                  //             Expanded(
+                                  //               child: UserBirthDetailsWidget(
+                                  //                 userId: widget.userId,
+                                  //                 birthDetailsData: birthDetails,
+                                  //                 isCompact: false,
+                                  //               ),
+                                  //             ),
+                                  //             Container(
+                                  //               width: 40,
+                                  //               height: 40,
+                                  //               decoration: BoxDecoration(
+                                  //                 shape: BoxShape.circle,
+                                  //                 gradient: LinearGradient(
+                                  //                   colors: [
+                                  //                     Colors.blue.withValues(alpha: 0.5),
+                                  //                     Colors.purple.withValues(alpha: 0.3),
+                                  //                   ],
+                                  //                 ),
+                                  //               ),
+                                  //               child: const Icon(
+                                  //                 Icons.arrow_outward,
+                                  //                 color: Colors.white,
+                                  //                 size: 20,
+                                  //               ),
+                                  //             ),
+                                  //           ],
+                                  //         ),
+                                  //       ),
+                                  //     ),
+                                  //   ),
+                                  // );
                                 },
                               ),
                             ),
@@ -793,12 +871,44 @@ class _ExpertVideoCallState extends State<ExpertVideoCall> with TickerProviderSt
                                 ),
 
                                 // Camera button
-                                _buildVideoControlButton(
-                                  icon: _cameraOn ? Icons.videocam : Icons.videocam_off,
-                                  label: _cameraOn ? 'Camera' : 'Off',
-                                  onTap: _toggleCamera,
-                                  color: _cameraOn ? primaryColor : Colors.red,
-                                  isActive: _cameraOn,
+                                Tooltip(
+                                  message: _cameraOn ? 'Turn camera off' : 'Turn camera on',
+                                  child: _buildVideoControlButton(
+                                    icon: _cameraOn ? Icons.videocam : Icons.videocam_off,
+                                    label: _cameraOn ? 'Camera' : 'Off',
+                                    onTap: () async {
+                                      if (_engine != null) {
+                                        try {
+                                          _cameraOn = !_cameraOn;
+                                          await _engine!.enableLocalVideo(_cameraOn);
+                                          setState(() {});
+                                        } catch (e) {
+                                          // Optionally show error to user
+                                        }
+                                      }
+                                    },
+                                    color: _cameraOn ? primaryColor : Colors.red,
+                                    isActive: _cameraOn,
+                                  ),
+                                ),
+                                // Swap camera button
+                                Tooltip(
+                                  message: 'Switch camera',
+                                  child: _buildVideoControlButton(
+                                    icon: Icons.cameraswitch,
+                                    label: 'Swap',
+                                    onTap: () async {
+                                      if (_engine != null) {
+                                        try {
+                                          await _engine!.switchCamera();
+                                        } catch (e) {
+                                          // Optionally show error to user
+                                        }
+                                      }
+                                    },
+                                    color: primaryColor,
+                                    isActive: true,
+                                  ),
                                 ),
                               ],
                             ),

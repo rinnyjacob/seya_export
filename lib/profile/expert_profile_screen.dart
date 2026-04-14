@@ -602,7 +602,8 @@ class _ExpertEditProfileScreenState extends State<ExpertEditProfileScreen>
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = AppColors.lightPrimary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = isDark ? AppColors.darkPrimary : AppColors.lightPrimary;
 
     if (loading) {
       return const Scaffold(
@@ -624,7 +625,7 @@ class _ExpertEditProfileScreenState extends State<ExpertEditProfileScreen>
                   gradient: LinearGradient(
                     colors: [
                       primaryColor,
-                      primaryColor.withOpacity(.6),
+                      primaryColor.withValues(alpha: .6),
                     ],
                   ),
                 ),
@@ -699,6 +700,7 @@ class _ExpertEditProfileScreenState extends State<ExpertEditProfileScreen>
                       label: "Skill",
                       hint: "Astrologer, Tarot etc",
                       controller: _skillCtrl,
+                      readOnly: true,
                       prefixIcon: Icons.star,
                       validator: (v) =>
                       v!.isEmpty ? "Skill required" : null,
@@ -713,6 +715,7 @@ class _ExpertEditProfileScreenState extends State<ExpertEditProfileScreen>
                           child: ModernTextField(
                             label: "Experience",
                             hint: "Years",
+                            readOnly: true,
                             controller: _expCtrl,
                             keyboardType: TextInputType.number,
                             prefixIcon: Icons.timeline,
@@ -729,6 +732,7 @@ class _ExpertEditProfileScreenState extends State<ExpertEditProfileScreen>
                           child: ModernTextField(
                             label: "Price / min",
                             hint: "₹",
+                            readOnly: true,
                             controller: _priceCtrl,
                             keyboardType: TextInputType.number,
                             prefixIcon: Icons.currency_rupee,
@@ -787,7 +791,7 @@ class _ExpertEditProfileScreenState extends State<ExpertEditProfileScreen>
                       borderRadius: 20,
                       child: Column(
                         children: [
-
+                          !allowAudio?const SizedBox():
                           _buildCommToggle(
                             label: "Audio Call",
                             icon: Icons.headset,
@@ -798,6 +802,7 @@ class _ExpertEditProfileScreenState extends State<ExpertEditProfileScreen>
                           ),
 
                           const SizedBox(height: 10),
+                          !allowVideo?const SizedBox():
 
                           _buildCommToggle(
                             label: "Video Call",
@@ -809,6 +814,7 @@ class _ExpertEditProfileScreenState extends State<ExpertEditProfileScreen>
                           ),
 
                           const SizedBox(height: 10),
+                          !allowChat?const SizedBox():
 
                           _buildCommToggle(
                             label: "Chat",

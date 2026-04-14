@@ -1,4 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class ExpertReviewDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> review;
@@ -6,8 +8,9 @@ class ExpertReviewDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color primary = const Color(0xFFC89C6E);
-    final Color background = const Color(0xFF1C0C1F);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color primary = isDark ? AppColors.darkPrimary : AppColors.lightPrimary;
+    final Color background = isDark ? AppColors.darkSurface : Colors.white;
     final String userPhoto = review['userPhoto'] ?? '';
     final String userName = review['userName'] ?? '';
     final String userEmail = review['userEmail'] ?? '';
@@ -18,7 +21,11 @@ class ExpertReviewDetailsScreen extends StatelessWidget {
     final String feedback = review['feedback'] ?? '';
     final int? totalAmount = review['totalAmount'] is int ? review['totalAmount'] : int.tryParse('${review['totalAmount']}');
     final int? durationSeconds = review['durationSeconds'] is int ? review['durationSeconds'] : int.tryParse('${review['durationSeconds']}');
-    final DateTime? createdAt = review['createdAt'] is DateTime ? review['createdAt'] : (review['createdAt']?.toDate?.call() ?? null);
+    final DateTime? createdAt = review['createdAt'] is DateTime
+        ? review['createdAt'] as DateTime
+        : review['createdAt'] is Timestamp
+            ? (review['createdAt'] as Timestamp).toDate()
+            : null;
 
     return Scaffold(
       backgroundColor: background,
@@ -37,7 +44,7 @@ class ExpertReviewDetailsScreen extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 32,
-                  backgroundColor: primary.withOpacity(0.2),
+                  backgroundColor: primary.withValues(alpha: 0.2),
                   backgroundImage: userPhoto.isNotEmpty ? NetworkImage(userPhoto) : null,
                   child: userPhoto.isEmpty ? Icon(Icons.person, color: primary, size: 32) : null,
                 ),
@@ -48,23 +55,23 @@ class ExpertReviewDetailsScreen extends StatelessWidget {
                     children: [
                       Text(userName, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primary)),
                       if (userEmail.isNotEmpty)
-                        Text(userEmail, style: TextStyle(fontSize: 14, color: Colors.white70)),
+                        Text(userEmail, style: TextStyle(fontSize: 14, color: isDark ? Colors.white70 : Colors.black54)),
                       if (userPhone.isNotEmpty)
-                        Text(userPhone, style: TextStyle(fontSize: 14, color: Colors.white70)),
+                        Text(userPhone, style: TextStyle(fontSize: 14, color: isDark ? Colors.white70 : Colors.black54)),
                     ],
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
-            _detailRow('Expert', expertName, primary),
-            _detailRow('Call Type', callType, primary),
+            _detailRow('Expert', expertName, primary, isDark: isDark),
+            _detailRow('Call Type', callType, primary, isDark: isDark),
             if (createdAt != null)
-              _detailRow('Date', '${createdAt.day}/${createdAt.month}/${createdAt.year} ${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}', primary),
+              _detailRow('Date', '${createdAt.day}/${createdAt.month}/${createdAt.year} ${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}', primary, isDark: isDark),
             if (durationSeconds != null)
-              _detailRow('Duration', '${durationSeconds}s', primary),
+              _detailRow('Duration', '${durationSeconds ~/ 60}:${(durationSeconds % 60).toString().padLeft(2, '0')}', primary, isDark: isDark),
             if (totalAmount != null)
-              _detailRow('Amount', '₹$totalAmount', primary),
+              _detailRow('Amount', '₹$totalAmount', primary, isDark: isDark),
             if (rating != null)
               Row(
                 children: [
@@ -84,12 +91,12 @@ class ExpertReviewDetailsScreen extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white10,
+                color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 feedback.isNotEmpty ? feedback : 'No feedback provided.',
-                style: const TextStyle(color: Colors.white, fontSize: 15),
+                style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 15),
               ),
             ),
           ],
@@ -98,13 +105,13 @@ class ExpertReviewDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _detailRow(String label, String value, Color color) {
+  Widget _detailRow(String label, String value, Color color, {bool isDark = true}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
           SizedBox(width: 110, child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600))),
-          Expanded(child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 15))),
+          Expanded(child: Text(value, style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 15))),
         ],
       ),
     );

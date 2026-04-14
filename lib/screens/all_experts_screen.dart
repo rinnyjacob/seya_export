@@ -1,3 +1,4 @@
+// ignore_for_file: deprecated_member_use
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
@@ -74,17 +75,15 @@ class _AllExpertsScreenState extends State<AllExpertsScreen> {
                     return _buildEmptyState(primaryColor);
                   }
 
-                  final experts = snapshot.data!.docs;
-
-                  // Sort experts by name in the app when filtering
-                  // (to avoid Firestore composite index requirement)
-                  if (_filterStatus != 'all') {
-                    experts.sort((a, b) {
-                      final aName = (a.data() as Map<String, dynamic>)['name'] ?? '';
-                      final bName = (b.data() as Map<String, dynamic>)['name'] ?? '';
-                      return aName.toString().toLowerCase().compareTo(bName.toString().toLowerCase());
-                    });
-                  }
+                  final rawDocs = snapshot.data!.docs;
+                  final experts = _filterStatus != 'all'
+                      ? (List.of(rawDocs)
+                        ..sort((a, b) {
+                          final aName = (a.data() as Map<String, dynamic>)['name'] ?? '';
+                          final bName = (b.data() as Map<String, dynamic>)['name'] ?? '';
+                          return aName.toString().toLowerCase().compareTo(bName.toString().toLowerCase());
+                        }))
+                      : rawDocs;
 
                   return ListView.builder(
                     padding: const EdgeInsets.all(16),
@@ -198,7 +197,7 @@ class _AllExpertsScreenState extends State<AllExpertsScreen> {
                 ),
                 child: Center(
                   child: Text(
-                    name.substring(0, 1).toUpperCase(),
+                    name.isNotEmpty ? name[0].toUpperCase() : '?',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -414,37 +413,42 @@ class _AllExpertsScreenState extends State<AllExpertsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Filter Experts'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<String>(
-              title: const Text('All Experts'),
-              value: 'all',
-              groupValue: _filterStatus,
-              onChanged: (value) {
-                setState(() => _filterStatus = value!);
-                Navigator.pop(context);
-              },
-            ),
-            RadioListTile<String>(
-              title: const Text('Online Only'),
-              value: 'online',
-              groupValue: _filterStatus,
-              onChanged: (value) {
-                setState(() => _filterStatus = value!);
-                Navigator.pop(context);
-              },
-            ),
-            RadioListTile<String>(
-              title: const Text('Offline Only'),
-              value: 'offline',
-              groupValue: _filterStatus,
-              onChanged: (value) {
-                setState(() => _filterStatus = value!);
-                Navigator.pop(context);
-              },
-            ),
-          ],
+        content: StatefulBuilder(
+          builder: (context, setLocal) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<String>(
+                title: const Text('All Experts'),
+                value: 'all',
+                groupValue: _filterStatus,
+                onChanged: (value) {
+                  setState(() => _filterStatus = value!);
+                  setLocal(() {});
+                  Navigator.pop(context);
+                },
+              ),
+              RadioListTile<String>(
+                title: const Text('Online Only'),
+                value: 'online',
+                groupValue: _filterStatus,
+                onChanged: (value) {
+                  setState(() => _filterStatus = value!);
+                  setLocal(() {});
+                  Navigator.pop(context);
+                },
+              ),
+              RadioListTile<String>(
+                title: const Text('Offline Only'),
+                value: 'offline',
+                groupValue: _filterStatus,
+                onChanged: (value) {
+                  setState(() => _filterStatus = value!);
+                  setLocal(() {});
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -541,13 +545,19 @@ class _AllExpertsScreenState extends State<AllExpertsScreen> {
   }
 
   void _contactExpert(String expertId, Map<String, dynamic> expertData) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Contacting ${expertData['name']}...'),
-        backgroundColor: AppColors.onlineGreen,
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Coming Soon'),
+        content: Text('Contacting ${expertData['name'] ?? 'this expert'} will be available in the next update.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
       ),
     );
-    // TODO: Implement call/chat functionality
   }
 }
 
