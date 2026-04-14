@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Firebase Configuration -->
+    <!-- Values extracted from google-services.json -->
+
+    <string name="google_app_id">1:556449970480:android:d95fbdc30794472fc530f5</string>
+    <string name="google_api_key">AIzaSyAIiYiNire99RY9LsQV8DbjalfSn15mQGk</string>
+    <string name="firebase_database_url">https://seya-ai.firebaseio.com</string>
+    <string name="ga_tracking_id"></string>
+    <string name="gcm_defaultSenderId">556449970480</string>
+    <string name="default_web_client_id">556449970480-ljp1tilp3j0h7f1qqek3kufjmf0oni2h.apps.googleusercontent.com</string>
+    <string name="firebase_project_id">seya-ai</string>
+    <string name="firebase_auth_web_api_key">AIzaSyAIiYiNire99RY9LsQV8DbjalfSn15mQGk</string>
+    <string name="firebase_storage_bucket">seya-ai.appspot.com</string>
+</resources>
+

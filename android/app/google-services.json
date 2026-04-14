@@ -1,0 +1,100 @@
+{
+  "project_info": {
+    "project_number": "556449970480",
+    "project_id": "seya-ai",
+    "storage_bucket": "seya-ai.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:556449970480:android:d95fbdc30794472fc530f5",
+        "android_client_info": {
+          "package_name": "com.seya.expert"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "556449970480-ljp1tilp3j0h7f1qqek3kufjmf0oni2h.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAIiYiNire99RY9LsQV8DbjalfSn15mQGk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "556449970480-ljp1tilp3j0h7f1qqek3kufjmf0oni2h.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:556449970480:android:32d3fb688b128115c530f5",
+        "android_client_info": {
+          "package_name": "com.ubikontech.seyaai"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "556449970480-oufphg6kuk0pt84ge533cm0ooqf88jg1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ubikontech.seyaai",
+            "certificate_hash": "0fbe156672d5cd00f20184157019ecd877d5282a"
+          }
+        },
+        {
+          "client_id": "556449970480-u5s3pikdm89dhuidsgu1d7vi9edi6vji.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ubikontech.seyaai",
+            "certificate_hash": "1926d76fbfcd93ca8d32cecce7e4c10b65b393eb"
+          }
+        },
+        {
+          "client_id": "556449970480-vgqftv7hvufeqvn19mbf0kqs73nk7dp5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ubikontech.seyaai",
+            "certificate_hash": "0988857cc6c5cfadedc202499dbc26083e920c5b"
+          }
+        },
+        {
+          "client_id": "556449970480-vh5pdqtd2jqp9iilan2d69bbmh1jcfea.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ubikontech.seyaai",
+            "certificate_hash": "976d7db728e5bea0a8ea1520a9dd05ec0ca000b5"
+          }
+        },
+        {
+          "client_id": "556449970480-ljp1tilp3j0h7f1qqek3kufjmf0oni2h.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAIiYiNire99RY9LsQV8DbjalfSn15mQGk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "556449970480-ljp1tilp3j0h7f1qqek3kufjmf0oni2h.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
